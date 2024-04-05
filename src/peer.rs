@@ -29,8 +29,6 @@ pub struct Peer {
     message: String,
     /// initial peer to connect and get [`SocketAddr`] of all the peers in network
     connect_to: Option<SocketAddr>,
-    /// peers to connect
-    peers_to_connect: HashSet<SocketAddr>,
     /// Already connected peers
     connected_peers: HashSet<SocketAddr>,
     /// established connections (actors)
@@ -62,7 +60,6 @@ impl Peer {
             period,
             message,
             connect_to,
-            peers_to_connect: Default::default(),
             connected_peers: Default::default(),
             connections: Default::default(),
         }
@@ -113,7 +110,7 @@ impl Actor for Peer {
         ctx.spawn(async move {
             let stream = TcpStream::connect(connect_to).await;
 
-            if let Err(_) = stream {
+            if stream.is_err() {
                 error!("couldn't connect to initial peer");
                 process::exit(1);
                 #[allow(unreachable_code)]
@@ -137,7 +134,6 @@ impl Actor for Peer {
                     let initial_peer = OutConnection::create(|ctx| {
                         OutConnection::add_stream(FramedRead::new(r, OutCodec), ctx);
                         OutConnection::new(
-                            actor.socket_addr,
                             remote_peer_addr,
                             peer_ctx_address,
                             FramedWrite::new(w, OutCodec, ctx),
@@ -239,7 +235,6 @@ impl Handler<ConnectPeers> for Peer {
                         let (r, w) = split(stream);
                         OutConnection::add_stream(FramedRead::new(r, OutCodec), ctx);
                         OutConnection::new(
-                            peer_addr,
                             *peer,
                             actor.clone(),
                             FramedWrite::new(w, OutCodec, ctx)

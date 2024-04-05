@@ -1,4 +1,3 @@
-use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::io;
 use std::net::SocketAddr;
@@ -136,9 +135,7 @@ impl StreamHandler<Result<InMessage, io::Error>> for InConnection {
                         debug!("in connection : got response from peer");
                         match resp {
                             PeersResponse(mut peers) => {
-                                // debug!("StreamHandler for InConnection PeersResponse {peers:?}");
                                 peers.remove(&self.remote_peer_addr);
-                                // debug!("&self.remote_peer_addr {}", &self.remote_peer_addr);
                                 self.peer_actor.send(AddPeers(peers))
                                     .into_actor(self)
                                     .then(|res, _actor, ctx| {
@@ -175,8 +172,6 @@ impl StreamHandler<Result<InMessage, io::Error>> for InConnection {
 
 /// Connection initiated by current peer
 pub struct OutConnection {
-    /// Address of this peer.It's needed for being discoverable by other peers.
-    peer_addr: SocketAddr,
     /// remote peer [`SocketAddr`]
     remote_peer_addr: SocketAddr,
     /// remote peer [`Actor`] address
@@ -187,13 +182,11 @@ pub struct OutConnection {
 
 impl OutConnection {
     pub fn new(
-        peer_addr: SocketAddr,
         remote_peer_addr: SocketAddr,
         peer_actor: Addr<Peer>,
         write: FramedWrite<OutMessage, WriteHalf<TcpStream>, OutCodec>) -> Self {
 
         Self {
-            peer_addr,
             remote_peer_addr,
             peer_actor,
             write,
@@ -258,7 +251,7 @@ impl StreamHandler<Result<OutMessage, io::Error>> for OutConnection {
                         //debug!("out connection : got response from peer");
                         match resp {
                             PeersResponse(mut peers) => {
-                                let removed = peers.remove(&self.remote_peer_addr);
+                                let _removed = peers.remove(&self.remote_peer_addr);
                                 self.peer_actor.send(AddPeers(peers))
                                     .into_actor(self)
                                     .then(|res, _actor, ctx| {
